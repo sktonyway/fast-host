@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dockploy - Docker Container Manager</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+            max-width: 500px;
+            width: 100%;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            color: #333;
+            font-size: 28px;
+            margin-bottom: 8px;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .form-group {
+            margin-bottom: 24px;
+        }
+
+        label {
+            display: block;
+            color: #333;
+            font-weight: 600;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            font-family: inherit;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .input-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .input-group input {
+            width: 100%;
+        }
+
+        button {
+            width: 100%;
+            padding: 14px 24px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 8px;
+        }
+
+        button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        button:active:not(:disabled) {
+            transform: translateY(0);
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .response-container {
+            margin-top: 32px;
+            display: none;
+            animation: slideIn 0.3s ease;
+        }
+
+        .response-container.show {
+            display: block;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .response {
+            padding: 20px;
+            border-radius: 8px;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .response.success {
+            background: #e8f5e9;
+            border-left: 4px solid #4caf50;
+            color: #2e7d32;
+        }
+
+        .response.error {
+            background: #ffebee;
+            border-left: 4px solid #f44336;
+            color: #c62828;
+        }
+
+        .response-title {
+            font-weight: 600;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .response-icon {
+            font-size: 18px;
+        }
+
+        .response-content {
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            word-break: break-all;
+            white-space: pre-wrap;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            margin-top: 16px;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(102, 126, 234, 0.2);
+            border-top-color: #667eea;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading.show {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🐳 Dockploy</h1>
+            <p>Docker Container Manager</p>
+        </div>
+
+        <form id="dockerForm">
+            <div class="form-group">
+                <label for="imageName">Docker Image</label>
+                <input 
+                    type="text" 
+                    id="imageName" 
+                    placeholder="e.g., ubuntu, nginx, postgres"
+                    required
+                >
+            </div>
+
+            <div class="form-group">
+                <div class="input-group">
+                    <div>
+                        <label for="imageTag">Tag</label>
+                        <input 
+                            type="text" 
+                            id="imageTag" 
+                            placeholder="latest"
+                            value="latest"
+                        >
+                    </div>
+                </div>
+            </div>
+
+            <button type="submit">Create Container</button>
+
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p style="margin-top: 8px; color: #667eea;">Creating container...</p>
+            </div>
+        </form>
+
+        <div class="response-container" id="responseContainer">
+            <div class="response" id="response"></div>
+        </div>
+    </div>
+
+    <script>
+        const form = document.getElementById('dockerForm');
+        const imageNameInput = document.getElementById('imageName');
+        const imageTagInput = document.getElementById('imageTag');
+        const loadingDiv = document.getElementById('loading');
+        const responseContainer = document.getElementById('responseContainer');
+        const responseDiv = document.getElementById('response');
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const image = imageNameInput.value.trim();
+            const tag = imageTagInput.value.trim() || 'latest';
+
+            if (!image) {
+                showError('Please enter an image name');
+                return;
+            }
+
+            // Show loading state
+            loadingDiv.classList.add('show');
+            responseContainer.classList.remove('show');
+            form.querySelector('button').disabled = true;
+
+            try {
+                const response = await fetch('/docker', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ image, tag })
+                });
+
+                const data = await response.json();
+
+                loadingDiv.classList.remove('show');
+                form.querySelector('button').disabled = false;
+
+                if (response.ok && data.status === 'success') {
+                    showSuccess(data.data);
+                    imageNameInput.value = '';
+                    imageTagInput.value = 'latest';
+                } else {
+                    showError(data.message || 'Unknown error occurred');
+                }
+            } catch (error) {
+                loadingDiv.classList.remove('show');
+                form.querySelector('button').disabled = false;
+                showError(`Network error: ${error.message}`);
+            }
+        });
+
+        function showSuccess(data) {
+            responseDiv.className = 'response success';
+            responseDiv.innerHTML = `
+                <div class="response-title">
+                    <span class="response-icon">✓</span>
+                    Container Created Successfully
+                </div>
+                <div class="response-content">${formatJSON(data)}</div>
+            `;
+            responseContainer.classList.add('show');
+        }
+
+        function showError(message) {
+            responseDiv.className = 'response error';
+            responseDiv.innerHTML = `
+                <div class="response-title">
+                    <span class="response-icon">✕</span>
+                    Error
+                </div>
+                <div class="response-content">${escapeHtml(message)}</div>
+            `;
+            responseContainer.classList.add('show');
+        }
+
+        function formatJSON(obj) {
+            return JSON.stringify(obj, null, 2);
+        }
+
+        function escapeHtml(text) {
+            const map = {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#039;'
+            };
+            return text.replace(/[&<>"']/g, m => map[m]);
+        }
+    </script>
+</body>
+</html>

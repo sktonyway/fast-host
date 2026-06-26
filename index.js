@@ -1,5 +1,10 @@
 import express from 'express';
 import Docker from 'dockerode';
+import httpProxy from 'http-proxy'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const docker = new Docker();
 
@@ -14,9 +19,30 @@ function pullImagePromisified(img, tag) {
 }
 
 const managementApp = express();
+const proxyApp = express();
 
+const proxy = httpProxy.createProxy();
 
 managementApp.use(express.json());
+managementApp.use(express.static(path.join(__dirname, 'public')));
+
+// Debug middleware
+managementApp.use((req, res, next) => {
+    console.log(`${req.method} ${req.path}`);
+    next();
+});
+
+// Serve index.html for root and unmatched routes
+managementApp.get('/', (req, res) => {
+    const filePath = path.join(__dirname, 'public', 'index.html');
+    console.log(`Sending file: ${filePath}`);
+    res.sendFile(filePath, (err) => {
+        if (err) {
+            console.error('Error sending file:', err);
+            res.status(500).send('Error loading page');
+        }
+    });
+});
 
 
 const MANAGEMENT_API_PORT = process.env.MANAGEMENT_API_PORT ?? 8080;
@@ -29,6 +55,7 @@ managementApp.get('/health', (req, res) => {
 managementApp.post('/docker', async (req, res) => {
     try {
         const { image, tag } = req.body;
+        console.log(image, tag)
 
         if (!image || !tag) {
             return res.status(400).json({ status: 'error', message: 'image and tag are required' });
@@ -92,5 +119,19 @@ managementApp.post('/docker', async (req, res) => {
 
 
 managementApp.listen(MANAGEMENT_API_PORT, () => {
-    console.log('Started to listen.')
+    console.log(`\n🐳 Dockploy started on http://localhost:${MANAGEMENT_API_PORT}`);
+    console.log(`📁 Static files: ${path.join(__dirname, 'public')}\n`);
+})
+
+// Reverse proxy server
+
+proxyApp.use((req,res)=>{
+    const containerName = req.hostname.split('.')[0];
+    return proxy.web(req, res, {
+        target: `http://${containerName}:80`
+    })
+})
+
+proxyApp.listen(80, ()=>{
+    console.log('reverse proxy is running at port 80')
 })
