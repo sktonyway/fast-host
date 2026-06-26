@@ -118,7 +118,7 @@ managementApp.post('/docker', async (req, res) => {
                 containerId: container.id,
                 containerName: inspect.Name,
                 state: inspect.State,
-                domain: `${inspect.Name}.${REVERSE_PROXY_HOST}`,
+                domain: `http://${inspect.Name}.${REVERSE_PROXY_HOST}`,
             }
         })
     } catch (err) {

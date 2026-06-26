@@ -11,6 +11,8 @@ services:
       - '80:80'
     networks:
       - deploy-engine-network
+    environment:
+      - REVERSE_PROXY_HOST = deploy.tonyway.space
 
 
 networks:
