@@ -7,3 +7,10 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
     ports:
       - '8080:8080'
+    networks:
+      - deploy-engine-network
+
+
+networks:
+  deploy-engine-network:
+    name: deploy-engine-network

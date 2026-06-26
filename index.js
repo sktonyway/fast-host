@@ -49,27 +49,26 @@ managementApp.post('/docker', async (req, res) => {
         }
 
         if (!isExistingImage) {
-            console.log(`Pulling image: ${image}:${tag}`);
             await pullImagePromisified(image, tag);
-            console.log(`Successfully pulled image: ${image}:${tag}`);
         }
 
-        console.log(`Creating container from image: ${image}:${tag}`);
         const container = await docker.createContainer({
             Image: `${image}:${tag}`,
-            Cmd: ['/bin/bash', '-c', 'sleep infinity'],
+            // Cmd: ['/bin/bash', '-c', 'sleep infinity'],
             HostConfig: {
                 AutoRemove: true,
             }
         });
 
-        console.log(`Container created with ID: ${container.id}`);
-        console.log(`Starting container: ${container.id}`);
+        const network = docker.getNetwork('deploy-engine-network');
+
         await container.start();
-        console.log(`Container started successfully`);
 
         const inspect = await container.inspect();
-        console.log(`Container inspection completed. State: ${inspect.State.Running}`);
+
+        await network.connect({
+            Container: inspect.Id,
+        })
 
         return res.json({
             status: 'success',
