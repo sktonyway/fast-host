@@ -10,10 +10,25 @@ const docker = new Docker();
 
 function pullImagePromisified(img, tag) {
     return new Promise((res, rej) => {
-        docker.pull(`${img}`, { tag }, (err) => {
+        docker.pull(`${img}:${tag}`, {}, (err, stream) => {
             if (err) {
-                rej(err);
-            } else return res(true);
+                return rej(err);
+            }
+
+            docker.modem.followProgress(
+                stream,
+                (doneErr, output) => {
+                    if (doneErr){
+                        return rej(doneErr);
+                    }
+                    return res(output);
+                },
+                (event) => {
+                    if (event.status){
+                        console.log(`[pull ${img}:${tag}] ${event.status} ${event.progress ? `${event.progress}` : ''}`)
+                    }
+                }
+            )
         });
     });
 }
